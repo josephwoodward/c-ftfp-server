@@ -17,14 +17,24 @@
 
 int main(void) {
     int fails = 0;
-    struct tftp_server s = {.port = 8082};
+    struct tftp_server s = {.port = 8082, .file = "file.jpg"};
 
+    // start_server tests
     {
-	// start_server tests
-	if (start_server(&s) > 0) {
+	if (start_server(&s) != EXIT_SUCCESS) {
 	    printf(C_RED("FAILED: ") "start_server expected to be 0 but was 1\n");
 	} else {
 	    printf(C_GREEN("PASS: ") "start_server started successfully\n");
+	}
+    }
+
+    // start_server validation
+    {
+	s.file = "";
+	if (start_server(&s) == EXIT_FAILURE) {
+	    printf(C_GREEN("PASS: ") "start_server handles empty file argumemt\n");
+	} else {
+	    printf(C_RED("FAILED: ") "start_server expected to handle empty file but did not\n");
 	}
     }
 

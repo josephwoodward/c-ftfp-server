@@ -1,8 +1,13 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "server.h"
 
-/* int main(int argc, char *argv[]) { */
-/*     struct tftp_server s = {.port = 8082}; */
-/*     start_server(&s); */
+int main2(int argc, char *argv[]) {
+    /* char *file; */
+    /* printf("Argument %d: %s\n", 1, argv[1]); */
 
-/*     return 0; */
-/* } */
+    struct tftp_server s = {.port = 8082, .file = "file.jpg"};
+    int ret = start_server(&s);
+    exit(ret);
+}
