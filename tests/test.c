@@ -15,7 +15,7 @@
 #define C_MAGENTA(s) "\033[35;1m" s "\033[0m"
 #endif
 
-int main(void) {
+int main2(void) {
     int fails = 0;
     struct tftp_server s = {.port = 8082, .file = "file.jpg"};
 
