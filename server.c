@@ -22,7 +22,15 @@ int start_server(struct tftp_server *s) {
 	printf("Error while creating socket\n");
 	return -1;
     }
+
     printf("Socket created successfully\n");
+
+    // configure socket to allow it to be reused, avoiding 'Address already in use' errors
+    int reuse = 1;
+    if (setsockopt(socket_desc, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse)) < 0) {
+	printf("SO_REUSEPORT failed\n");
+	return 1;
+    }
 
     // Set port and IP:
     struct sockaddr_in serv_addr = {
