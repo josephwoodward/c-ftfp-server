@@ -6,6 +6,8 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#define DATAGRAM_SIZE 516
+
 int start_server(struct tftp_server *s) {
     if (s->file == NULL || strlen(s->file) < 1) {
 	perror("file to transfer not specified");
@@ -39,13 +41,24 @@ int start_server(struct tftp_server *s) {
 	.sin_addr = {htonl(INADDR_ANY)}, // 0.0.0.0
     };
 
-    // Bind to the set port and IP:
+    // Bind to the set port and IP so we don't receive everything
     if (bind(socket_desc, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) != 0) {
 	printf("Couldn't bind to the port %d\n", s->port);
 	return 1;
     }
 
     printf("Listening for incoming messages...\n\n");
+
+    char buf[DATAGRAM_SIZE];
+    /* int from_len = sizeof(serv_addr); */
+    socklen_t clientAddrLen = sizeof(serv_addr);
+    int bytes;
+    while (1) {
+	/* fromlen = sizeof(addr); */
+	bytes = recvfrom(socket_desc, buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
+	printf("recv()'d %d bytes of data in buf\n", bytes);
+	/* printf("from IP address %s\n", inet_ntoa(addr.sin_addr)); */
+    }
 
     return EXIT_SUCCESS;
 }
