@@ -47,17 +47,16 @@ int start_server(struct tftp_server *s) {
 	return 1;
     }
 
-    printf("Listening for incoming messages...\n\n");
+    printf("Listening for incoming tftp messages on port %d...\n\n", s->port);
 
-    char buf[DATAGRAM_SIZE];
-    /* int from_len = sizeof(serv_addr); */
+    uint8_t buf[1];
     socklen_t clientAddrLen = sizeof(serv_addr);
     int bytes;
+    int opCode;
     while (1) {
-	/* fromlen = sizeof(addr); */
 	bytes = recvfrom(socket_desc, buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
-	printf("recv()'d %d bytes of data in buf\n", bytes);
-	/* printf("from IP address %s\n", inet_ntoa(addr.sin_addr)); */
+	opCode = buf[0] & 0x0F;
+	printf("opcode received: %d\n", opCode);
     }
 
     return EXIT_SUCCESS;
