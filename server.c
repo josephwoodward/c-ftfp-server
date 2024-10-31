@@ -8,6 +8,16 @@
 
 #define DATAGRAM_SIZE 516
 
+#define OPCODE_RRQ 1
+
+#define OPCODE_WRQ 2
+
+#define OPCODE_DATA 3
+
+#define OPCODE_ACK 4
+
+#define OPCODE_ERR 5
+
 int start_server(struct tftp_server *s) {
     if (s->file == NULL || strlen(s->file) < 1) {
 	perror("file to transfer not specified");
@@ -49,14 +59,31 @@ int start_server(struct tftp_server *s) {
 
     printf("Listening for incoming tftp messages on port %d...\n\n", s->port);
 
-    uint8_t buf[1];
+    char buf[DATAGRAM_SIZE];
+    memset(buf, 0, sizeof buf);
+
     socklen_t clientAddrLen = sizeof(serv_addr);
-    int bytes;
-    int opCode;
+    int bytes_read;
+
+    uint16_t opcode;
+    char filename[512];
+
     while (1) {
-	bytes = recvfrom(socket_desc, buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
-	opCode = buf[0] & 0x0F;
-	printf("opcode received: %d\n", opCode);
+	// read contents of dataframe
+	bytes_read = recvfrom(socket_desc, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
+	if (bytes_read < 0) {
+	    printf("Error whilst listening for tftp packets");
+	    return -1;
+	}
+
+	// parse opcode
+	memcpy(&opcode, (uint16_t *)&buf, 2);
+	opcode = ntohs(opcode);
+	printf("opcode received: %d\n", opcode);
+
+	// parse filename
+	strcpy(filename, buf + 2);
+	printf("filename received: %lu\n", sizeof(filename));
     }
 
     return EXIT_SUCCESS;
