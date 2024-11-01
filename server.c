@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include <arpa/inet.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -65,9 +66,6 @@ int start_server(struct tftp_server *s) {
     socklen_t clientAddrLen = sizeof(serv_addr);
     int bytes_read;
 
-    uint16_t opcode;
-    char filename[512];
-
     while (1) {
 	// read contents of dataframe
 	bytes_read = recvfrom(socket_desc, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
@@ -77,13 +75,19 @@ int start_server(struct tftp_server *s) {
 	}
 
 	// parse opcode
-	memcpy(&opcode, (uint16_t *)&buf, 2);
-	opcode = ntohs(opcode);
+	uint16_t opcode = ntohs(*(uint16_t *)&buf);
 	printf("opcode received: %d\n", opcode);
 
 	// parse filename
+	char *filename = calloc(strlen(buf + 2), sizeof(char));
+	if (filename == NULL) {
+	    printf("Error whilst parsing filename\n");
+	    return -1;
+	}
 	strcpy(filename, buf + 2);
-	printf("filename received: %lu\n", sizeof(filename));
+	printf("filename received: %s\n", filename);
+
+	free(filename);
     }
 
     return EXIT_SUCCESS;
