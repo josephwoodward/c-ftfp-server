@@ -1,4 +1,4 @@
-#include "server.h"
+#include "tftp_server.h"
 
 #include <arpa/inet.h>
 #include <stdint.h>
@@ -18,6 +18,8 @@
 #define OPCODE_ACK 4
 
 #define OPCODE_ERR 5
+
+FILE *src_file;
 
 int start_server(struct tftp_server *s) {
     if (s->file == NULL || strlen(s->file) < 1) {
@@ -66,6 +68,9 @@ int start_server(struct tftp_server *s) {
     socklen_t clientAddrLen = sizeof(serv_addr);
     int bytes_read;
 
+    // this will either be "netascii", "octet" or "mail"
+    char mode[8];
+
     while (1) {
 	// read contents of dataframe
 	bytes_read = recvfrom(socket_desc, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
@@ -79,16 +84,30 @@ int start_server(struct tftp_server *s) {
 	printf("opcode received: %d\n", opcode);
 
 	// parse filename
-	char *filename = calloc(strlen(buf + 2), sizeof(char));
+	int p = 2;
+	char *filename = calloc(strlen(buf + p), sizeof(char));
 	if (filename == NULL) {
 	    printf("Error whilst parsing filename\n");
 	    return -1;
 	}
-	strcpy(filename, buf + 2);
-	printf("filename received: %s\n", filename);
+	strcpy(filename, buf + p);
+	printf("filename received: %s, length is %lu\n", filename, strlen(filename));
+
+	// parse mode
+	p++; // account for zero byte
+	memset(mode, 0, sizeof(mode));
+	strcpy(mode, buf + p + strlen(filename));
+	printf("mode is: %s\n", mode);
 
 	free(filename);
     }
+
+    // Data acts as the data packet that will transfer the files payload
+    // 2 bytes     2 bytes      n bytes
+    // ----------------------------------
+    // | Opcode |   Block #  |   Data     |
+    // ----------------------------------
+    int write() {}
 
     return EXIT_SUCCESS;
 }
