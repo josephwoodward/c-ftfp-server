@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "server.h"
+#include "tftp_server.h"
 
 int main(int argc, char *argv[]) {
     /* char *file; */

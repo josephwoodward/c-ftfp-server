@@ -1,3 +1,4 @@
+#include <stdio.h>
 struct tftp_server {
     int port;
     int retries;
@@ -16,4 +17,4 @@ int start_server(struct tftp_server *s);
  *                   client;
  * @param  cli_addr  address of the client requesting the file transfer.
  */
-/* void binary_mode_transfer(FILE *src_file, int socket, struct sockaddr cli_addr); */
+void transfter_binary_mode(FILE *src_file, int socket, struct sockaddr cli_addr);

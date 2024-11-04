@@ -99,15 +99,19 @@ int start_server(struct tftp_server *s) {
 	strcpy(mode, buf + p + strlen(filename));
 	printf("mode is: %s\n", mode);
 
-	free(filename);
+	if (mode == "") {
+	    transfter_binary_mode(NULL, socket_desc, (struct sockaddr *)serv_addr);
+
+	    free(filename);
+	}
+
+	return EXIT_SUCCESS;
     }
-
-    // Data acts as the data packet that will transfer the files payload
-    // 2 bytes     2 bytes      n bytes
-    // ----------------------------------
-    // | Opcode |   Block #  |   Data     |
-    // ----------------------------------
-    int write() {}
-
-    return EXIT_SUCCESS;
 }
+
+// Data acts as the data packet that will transfer the files payload
+// 2 bytes     2 bytes      n bytes
+// ----------------------------------
+// | Opcode |   Block #  |   Data     |
+// ----------------------------------
+void transfer_binary_mode(FILE *src_file, int socket, struct sockaddr cli_addr) {}
