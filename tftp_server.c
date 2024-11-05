@@ -1,6 +1,7 @@
 #include "tftp_server.h"
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +19,9 @@
 #define OPCODE_ACK 4
 
 #define OPCODE_ERR 5
+
+#undef DEBUG
+#define DEBUG 1
 
 FILE *src_file;
 
@@ -56,8 +60,8 @@ int start_server(struct tftp_server *s) {
 
     // Bind to the set port and IP so we don't receive everything
     if (bind(socket_desc, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) != 0) {
-	printf("Couldn't bind to the port %d\n", s->port);
-	return 1;
+	printf("Couldn't bind to the port %d: %d\n", s->port, errno);
+	return -1;
     }
 
     printf("Listening for incoming tftp messages on port %d...\n\n", s->port);
@@ -75,7 +79,7 @@ int start_server(struct tftp_server *s) {
 	// read contents of dataframe
 	bytes_read = recvfrom(socket_desc, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
 	if (bytes_read < 0) {
-	    printf("Error whilst listening for tftp packets");
+	    printf("Error whilst listening for tftp packets: %d", errno);
 	    return -1;
 	}
 
@@ -85,25 +89,34 @@ int start_server(struct tftp_server *s) {
 
 	// parse filename
 	int p = 2;
-	char *filename = calloc(strlen(buf + p), sizeof(char));
-	if (filename == NULL) {
-	    printf("Error whilst parsing filename\n");
+	char *req_filename = calloc(strlen(buf + p), sizeof(char));
+	if (req_filename == NULL) {
+	    printf("Error whilst parsing filename: %d\n", errno);
 	    return -1;
 	}
-	strcpy(filename, buf + p);
-	printf("filename received: %s, length is %lu\n", filename, strlen(filename));
+	strcpy(req_filename, buf + p);
+
+	if (DEBUG) {
+	    printf("filename received: %s, length is %lu\n", req_filename, strlen(req_filename));
+	}
 
 	// parse mode
 	p++; // account for zero byte
 	memset(mode, 0, sizeof(mode));
-	strcpy(mode, buf + p + strlen(filename));
-	printf("mode is: %s\n", mode);
+	strcpy(mode, buf + p + strlen(req_filename));
 
-	if (mode == "") {
-	    transfter_binary_mode(NULL, socket_desc, (struct sockaddr *)serv_addr);
-
-	    free(filename);
+	if (DEBUG) {
+	    printf("mode is: %s\n", mode);
 	}
+
+	if (strcmp(mode, "octet")) {
+	    /* transfter_binary_mode(NULL, socket_desc, &something); */
+	    const char *msg = "From another computer...";
+	    size_t msg_length = strlen(msg);
+	    int result = sendto(socket_desc, msg, msg_length, 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+	}
+
+	free(req_filename);
 
 	return EXIT_SUCCESS;
     }

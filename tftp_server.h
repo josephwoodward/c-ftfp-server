@@ -1,4 +1,10 @@
 #include <stdio.h>
+
+/**
+ * Set flag to 1 to enable debugging log messages.
+ */
+#define DEBUG 0
+
 struct tftp_server {
     int port;
     int retries;
@@ -17,4 +23,4 @@ int start_server(struct tftp_server *s);
  *                   client;
  * @param  cli_addr  address of the client requesting the file transfer.
  */
-void transfter_binary_mode(FILE *src_file, int socket, struct sockaddr cli_addr);
+/* void transfter_binary_mode(FILE *src_file, int socket, struct sockaddr_in *cli_addr); */
