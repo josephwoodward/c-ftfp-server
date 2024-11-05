@@ -69,7 +69,8 @@ int start_server(struct tftp_server *s) {
     char buf[DATAGRAM_SIZE];
     memset(buf, 0, sizeof buf);
 
-    socklen_t clientAddrLen = sizeof(serv_addr);
+    struct sockaddr_in client_addr;
+    socklen_t clientAddrLen = sizeof(client_addr);
     int bytes_read;
 
     // this will either be "netascii", "octet" or "mail"
@@ -77,7 +78,8 @@ int start_server(struct tftp_server *s) {
 
     while (1) {
 	// read contents of dataframe
-	bytes_read = recvfrom(socket_desc, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, &clientAddrLen);
+	bytes_read = recvfrom(socket_desc, (char *)buf, sizeof(buf), 0,
+			      (struct sockaddr *)&client_addr, &clientAddrLen);
 	if (bytes_read < 0) {
 	    printf("Error whilst listening for tftp packets: %d", errno);
 	    return -1;
@@ -109,17 +111,18 @@ int start_server(struct tftp_server *s) {
 	    printf("mode is: %s\n", mode);
 	}
 
-	if (strcmp(mode, "octet")) {
-	    /* transfter_binary_mode(NULL, socket_desc, &something); */
+	if (strcmp(mode, "octet") == 0) {
+	    /* transfter_binary_mode(NULL, socket_desc, &client_addr); */
 	    const char *msg = "From another computer...";
-	    size_t msg_length = strlen(msg);
-	    int result = sendto(socket_desc, msg, msg_length, 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+	    int result = sendto(socket_desc, msg, strlen(msg), 0, (struct sockaddr *)&client_addr,
+				sizeof(client_addr));
+	    printf("result is: %d\n", result);
 	}
 
 	free(req_filename);
-
-	return EXIT_SUCCESS;
     }
+
+    return EXIT_SUCCESS;
 }
 
 // Data acts as the data packet that will transfer the files payload
@@ -127,4 +130,4 @@ int start_server(struct tftp_server *s) {
 // ----------------------------------
 // | Opcode |   Block #  |   Data     |
 // ----------------------------------
-void transfer_binary_mode(FILE *src_file, int socket, struct sockaddr cli_addr) {}
+void transfer_binary_mode(FILE *src_file, int socket, struct sockaddr_in *cli_addr) {}
