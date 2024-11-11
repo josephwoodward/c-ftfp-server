@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <arpa/inet.h>
 
 /**
  * Set flag to 1 to enable debugging log messages.
@@ -23,4 +24,4 @@ int start_server(struct tftp_server *s);
  *                   client;
  * @param  cli_addr  address of the client requesting the file transfer.
  */
-void transfter_binary_mode(FILE *src_file, int socket, struct sockaddr_in *cli_addr);
+void transfer_binary_mode(FILE *src_file, int socket, struct sockaddr_in *cli_addr);

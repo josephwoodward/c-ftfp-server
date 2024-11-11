@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../server.c"
+#include "../tftp_server.c"
 
 #if _WIN32
 #define C_RED(s) s
@@ -15,7 +15,9 @@
 #define C_MAGENTA(s) "\033[35;1m" s "\033[0m"
 #endif
 
-int main2(void) {
+#ifndef _TEST_
+
+int main(void) {
     int fails = 0;
     struct tftp_server s = {.port = 8082, .file = "file.jpg"};
 
@@ -40,3 +42,5 @@ int main2(void) {
 
     return fails ? EXIT_FAILURE : EXIT_SUCCESS;
 }
+
+#endif

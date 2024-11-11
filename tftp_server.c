@@ -25,6 +25,9 @@
 
 FILE *src_file;
 
+// buffer used for both reading and writing data to packets
+char buf[DATAGRAM_SIZE];
+
 int start_server(struct tftp_server *s) {
     if (s->file == NULL || strlen(s->file) < 1) {
 	perror("file to transfer not specified");
@@ -66,20 +69,19 @@ int start_server(struct tftp_server *s) {
 
     printf("Listening for incoming tftp messages on port %d...\n\n", s->port);
 
-    char buf[DATAGRAM_SIZE];
-    memset(buf, 0, sizeof buf);
-
     struct sockaddr_in client_addr;
     socklen_t clientAddrLen = sizeof(client_addr);
     int bytes_read;
+
+    memset(buf, 0, sizeof buf);
 
     // this will either be "netascii", "octet" or "mail"
     char mode[8];
 
     while (1) {
 	// read contents of dataframe
-	bytes_read = recvfrom(socket_desc, (char *)buf, sizeof(buf), 0,
-			      (struct sockaddr *)&client_addr, &clientAddrLen);
+	bytes_read =
+	    recvfrom(socket_desc, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&client_addr, &clientAddrLen);
 	if (bytes_read < 0) {
 	    printf("Error whilst listening for tftp packets: %d", errno);
 	    return -1;
@@ -112,11 +114,7 @@ int start_server(struct tftp_server *s) {
 	}
 
 	if (strcmp(mode, "octet") == 0) {
-	    /* transfter_binary_mode(NULL, socket_desc, &client_addr); */
-	    const char *msg = "From another computer...";
-	    int result = sendto(socket_desc, msg, strlen(msg), 0, (struct sockaddr *)&client_addr,
-				sizeof(client_addr));
-	    printf("result is: %d\n", result);
+	    transfer_binary_mode(NULL, socket_desc, &client_addr);
 	}
 
 	free(req_filename);
@@ -130,4 +128,27 @@ int start_server(struct tftp_server *s) {
 // ----------------------------------
 // | Opcode |   Block #  |   Data     |
 // ----------------------------------
-void transfer_binary_mode(FILE *src_file, int socket, struct sockaddr_in *cli_addr) {}
+void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *client_addr) {
+
+    // clear buffer before writing to it
+    memset(buf, 0, sizeof buf);
+    /* memset(buf, 0, BUFSIZE); //can this work instead? */
+
+    uint16_t opcode = ntohs(OPCODE_ACK);
+    memcpy(buf, &opcode, 2);
+
+    uint16_t block = htons(1);
+    memcpy(buf, &block, 2);
+
+    fwrite(buf, 1, sizeof(buf), stdout);
+
+    const char *msg = "hello world\0";
+    memcpy(buf, "Hello world\0", strlen(msg));
+
+    /* printf("lengfth of buuffer: %s\n", strlen(buf + 2)); */
+
+    printf("transferring binary 1\n");
+
+    int result = sendto(socket_desc, msg, strlen(msg), 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
+    printf("result is: %d\n", result);
+}
