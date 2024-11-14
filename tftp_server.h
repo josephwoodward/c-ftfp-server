@@ -12,6 +12,34 @@ struct tftp_server {
     char *file;
 };
 
+typedef union {
+
+    uint16_t opcode;
+
+    struct {
+	uint16_t opcode; /* RRQ or WRQ */
+	uint8_t filename_and_mode[514];
+    } request;
+
+    struct {
+	uint16_t opcode; /* DATA */
+	uint16_t block_number;
+	uint8_t data[512];
+    } data;
+
+    struct {
+	uint16_t opcode; /* ACK */
+	uint16_t block_number;
+    } ack;
+
+    struct {
+	uint16_t opcode; /* ERROR */
+	uint16_t error_code;
+	uint8_t error_string[512];
+    } error;
+
+} tftp_message;
+
 
 int start_server(struct tftp_server *s);
 
@@ -25,3 +53,5 @@ int start_server(struct tftp_server *s);
  * @param  cli_addr  address of the client requesting the file transfer.
  */
 void transfer_binary_mode(FILE *src_file, int socket, struct sockaddr_in *cli_addr);
+
+int parse_request(int socket_desc, tftp_message *m,struct sockaddr_in *client_addr);

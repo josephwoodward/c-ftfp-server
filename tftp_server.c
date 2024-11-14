@@ -1,12 +1,10 @@
 #include "tftp_server.h"
 
-#include <arpa/inet.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 
 #define DATAGRAM_SIZE 516
 
@@ -71,56 +69,63 @@ int start_server(struct tftp_server *s) {
 
     struct sockaddr_in client_addr;
     socklen_t clientAddrLen = sizeof(client_addr);
-    int bytes_read;
 
     memset(buf, 0, sizeof buf);
 
     // this will either be "netascii", "octet" or "mail"
     char mode[8];
 
+    tftp_message m;
+
     while (1) {
 	// read contents of dataframe
-	bytes_read =
-	    recvfrom(socket_desc, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&client_addr, &clientAddrLen);
-	if (bytes_read < 0) {
-	    printf("Error whilst listening for tftp packets: %d", errno);
-	    return -1;
-	}
-
-	// parse opcode
-	uint16_t opcode = ntohs(*(uint16_t *)&buf);
-	printf("opcode received: %d\n", opcode);
-
-	// parse filename
-	int p = 2;
-	char *req_filename = calloc(strlen(buf + p), sizeof(char));
-	if (req_filename == NULL) {
-	    printf("Error whilst parsing filename: %d\n", errno);
-	    return -1;
-	}
-	strcpy(req_filename, buf + p);
-
-	if (DEBUG) {
-	    printf("filename received: %s, length is %lu\n", req_filename, strlen(req_filename));
-	}
-
-	// parse mode
-	p++; // account for zero byte
-	memset(mode, 0, sizeof(mode));
-	strcpy(mode, buf + p + strlen(req_filename));
-
-	if (DEBUG) {
-	    printf("mode is: %s\n", mode);
-	}
+	int res = parse_request(socket_desc, &m, &client_addr);
 
 	if (strcmp(mode, "octet") == 0) {
 	    transfer_binary_mode(NULL, socket_desc, &client_addr);
 	}
-
-	free(req_filename);
     }
 
     return EXIT_SUCCESS;
+}
+
+int parse_request(int socket_desc, tftp_message *m, struct sockaddr_in *client_addr) {
+    socklen_t clientAddrLen = sizeof(&client_addr);
+    int bytes_read = recvfrom(socket_desc, m, sizeof(*m), 0, (struct sockaddr *)&client_addr, &clientAddrLen);
+    if (bytes_read < 0) {
+	printf("Error whilst listening for tftp packets: %d", errno);
+	return -1;
+    }
+
+    m->request.opcode = ntohs(m->request.opcode);
+
+    if (DEBUG) {
+	printf("opcode received: %d\n", m->request.opcode);
+	printf("filename and mode received: %s\n", m->request.filename_and_mode);
+    }
+
+    // parse filename
+    int p = 2;
+    char *req_filename = calloc(strlen(buf + p), sizeof(char));
+    if (req_filename == NULL) {
+	printf("Error whilst parsing filename: %d\n", errno);
+	return -1;
+    }
+    strcpy(req_filename, buf + p);
+
+    /* if (DEBUG) { */
+    /* printf("filename received: %s, length is %lu\n", req_filename, strlen(req_filename)); */
+    /* } */
+
+    // parse mode
+    /* p++; // account for zero byte */
+    /* memset(mode, 0, sizeof(mode)); */
+    /* strcpy(mode, buf + p + strlen(req_filename)); */
+
+    /* if (DEBUG) { */
+    /* printf("mode is: %s\n", mode); */
+    /* } */
+    return 0;
 }
 
 // Data acts as the data packet that will transfer the files payload
@@ -145,9 +150,7 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     const char *msg = "hello world\0";
     memcpy(buf, "Hello world\0", strlen(msg));
 
-    /* printf("lengfth of buuffer: %s\n", strlen(buf + 2)); */
-
-    printf("transferring binary 1\n");
+    /* printf("lengfth of buffer: %s\n", strlen(buf + 2)); */
 
     int result = sendto(socket_desc, msg, strlen(msg), 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
     printf("result is: %d\n", result);
