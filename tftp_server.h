@@ -12,34 +12,61 @@ struct tftp_server {
     char *file;
 };
 
-typedef union {
+/* typedef union { */
+
+/*     uint16_t opcode; */
+
+/*     struct { */
+/* 	uint16_t opcode; /1* RRQ or WRQ *1/ */
+/* 	uint8_t filename_and_mode[514]; */
+/*     } request; */
+
+/*     struct { */
+/* 	uint16_t opcode; /1* DATA *1/ */
+/* 	uint16_t block_number; */
+/* 	uint8_t data[512]; */
+/*     } data; */
+
+/*     struct { */
+/* 	uint16_t opcode; /1* ACK *1/ */
+/* 	uint16_t block_number; */
+/*     } ack; */
+
+/*     struct { */
+/* 	uint16_t opcode; /1* ERROR *1/ */
+/* 	uint16_t error_code; */
+/* 	uint8_t error_string[512]; */
+/*     } error; */
+
+/* } tftp_message; */
+
+typedef struct {
 
     uint16_t opcode;
+    
+    union {
 
-    struct {
-	uint16_t opcode; /* RRQ or WRQ */
-	uint8_t filename_and_mode[514];
-    } request;
+	struct {
+	    char filename_and_mode[514];
+	} request;
 
-    struct {
-	uint16_t opcode; /* DATA */
-	uint16_t block_number;
-	uint8_t data[512];
-    } data;
+	struct {
+	    uint16_t block_number;
+	    uint8_t data[512];
+	} data;
 
-    struct {
-	uint16_t opcode; /* ACK */
-	uint16_t block_number;
-    } ack;
+	struct {
+	    uint16_t block_number;
+	} ack;
 
-    struct {
-	uint16_t opcode; /* ERROR */
-	uint16_t error_code;
-	uint8_t error_string[512];
-    } error;
+	struct {
+	    uint16_t error_code;
+	    uint8_t error_string[512];
+	} error;
+
+    };
 
 } tftp_message;
-
 
 int start_server(struct tftp_server *s);
 
