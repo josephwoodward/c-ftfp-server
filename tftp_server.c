@@ -1,5 +1,6 @@
 #include "tftp_server.h"
 
+#include <_string.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -74,7 +75,6 @@ int start_server(struct tftp_server *s) {
 
     // this will either be "netascii", "octet" or "mail"
     char mode[8];
-
     tftp_message m;
 
     while (1) {
@@ -89,29 +89,40 @@ int start_server(struct tftp_server *s) {
     return EXIT_SUCCESS;
 }
 
+/* 2 bytes     string    1 byte     string   1 byte */
+/* ------------------------------------------------ */
+/* | Opcode |  Filename  |   0  |    Mode    |   0  | */
+/* ------------------------------------------------ */
 int parse_request(int socket_desc, tftp_message *m, struct sockaddr_in *client_addr) {
     socklen_t clientAddrLen = sizeof(&client_addr);
-    int bytes_read = recvfrom(socket_desc, m, sizeof(*m), 0, (struct sockaddr *)&client_addr, &clientAddrLen);
+    int bytes_read =
+	recvfrom(socket_desc, m, sizeof(*m), 0, (struct sockaddr *)&client_addr, &clientAddrLen);
     if (bytes_read < 0) {
 	printf("Error whilst listening for tftp packets: %d", errno);
 	return -1;
     }
 
-    m->request.opcode = ntohs(m->request.opcode);
+    m->opcode = ntohs(m->opcode);
+
+    char mode[8];
+    memset(mode, 0, sizeof(mode));
+    strcpy(mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode));
 
     if (DEBUG) {
-	printf("opcode received: %d\n", m->request.opcode);
-	printf("filename and mode received: %s\n", m->request.filename_and_mode);
+	printf("root opcode received: %d\n", m->opcode);
+	printf("request opcode: %s\n", m->request.filename_and_mode);
+	printf("request filename: %s\n", m->request.filename_and_mode);
+	printf("mode: %s\n", mode);
     }
 
     // parse filename
-    int p = 2;
-    char *req_filename = calloc(strlen(buf + p), sizeof(char));
-    if (req_filename == NULL) {
-	printf("Error whilst parsing filename: %d\n", errno);
-	return -1;
-    }
-    strcpy(req_filename, buf + p);
+    /* int p = 2; */
+    /* char *req_filename = calloc(strlen(buf + p), sizeof(char)); */
+    /* if (req_filename == NULL) { */
+    /* printf("Error whilst parsing filename: %d\n", errno); */
+    /* return -1; */
+    /* } */
+    /* strcpy(req_filename, buf + p); */
 
     /* if (DEBUG) { */
     /* printf("filename received: %s, length is %lu\n", req_filename, strlen(req_filename)); */
@@ -152,6 +163,7 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
 
     /* printf("lengfth of buffer: %s\n", strlen(buf + 2)); */
 
-    int result = sendto(socket_desc, msg, strlen(msg), 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
+    int result = sendto(socket_desc, msg, strlen(msg), 0, (struct sockaddr *)&client_addr,
+			sizeof(*client_addr));
     printf("result is: %d\n", result);
 }
