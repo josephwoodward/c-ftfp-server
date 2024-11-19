@@ -48,6 +48,7 @@ typedef struct {
 
 	struct {
 	    char filename_and_mode[514];
+	    char mode[8];
 	} request;
 
 	struct {
@@ -81,4 +82,4 @@ int start_server(struct tftp_server *s);
  */
 void transfer_binary_mode(FILE *src_file, int socket, struct sockaddr_in *cli_addr);
 
-int parse_request(int socket_desc, tftp_message *m,struct sockaddr_in *client_addr);
+int parse_message(int socket_desc, tftp_message *m,struct sockaddr_in *client_addr);
