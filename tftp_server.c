@@ -86,19 +86,11 @@ int start_server(struct tftp_server *s) {
 	}
 
 	if (strcmp(m.request.mode, "octet") == 0) {
-
 	    FILE *file;
 	    file = fopen(m.request.filename_and_mode, "r");
 	    if (file == NULL) {
 		printf("Unable to open the file.\n");
 	    }
-
-	    // Store the content of the file
-	    char myString[100];
-
-	    // Read the content and store it inside myString
-	    fgets(myString, 100, file);
-	    printf("here %s\n", myString);
 
 	    transfer_binary_mode(file, socket_desc, &client_addr);
 	}
@@ -147,9 +139,10 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     int countdown;
     int to_close = 0;
     // Store the content of the file
-    char myString[100];
+    char myString[100] = {0};
     fgets(myString, 100, src_file);
     printf("here %s\n", myString);
+
     dlen = fread(data, 1, sizeof(data), src_file);
 
     // clear buffer before writing to it
