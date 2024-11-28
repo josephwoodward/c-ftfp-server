@@ -8,15 +8,12 @@
 #include <string.h>
 
 #define DATAGRAM_SIZE 516
+#define BLOCKSIZE = DATAGRAM_SIZE - 4;
 
 #define OPCODE_RRQ 1
-
 #define OPCODE_WRQ 2
-
 #define OPCODE_DATA 3
-
 #define OPCODE_ACK 4
-
 #define OPCODE_ERR 5
 
 #undef DEBUG
@@ -125,11 +122,6 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
     return 0;
 }
 
-// Data acts as the data packet that will transfer the files payload
-// 2 bytes     2 bytes      n bytes
-// ----------------------------------
-// | Opcode |   Block #  |   Data     |
-// ----------------------------------
 void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *client_addr) {
     uint8_t data[512];
     ssize_t dlen, c;
@@ -141,7 +133,6 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     // Store the content of the file
     char myString[100] = {0};
     fgets(myString, 100, src_file);
-    printf("here %s\n", myString);
 
     dlen = fread(data, 1, sizeof(data), src_file);
 
@@ -149,13 +140,19 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     memset(buf, 0, sizeof buf);
     /* memset(buf, 0, BUFSIZE); //can this work instead? */
 
+    // prepare response message
+    // Data acts as the data packet that will transfer the files payload
+    // 2 bytes     2 bytes      n bytes
+    // ----------------------------------
+    // | Opcode |   Block #  |   Data     |
+    // ----------------------------------
     uint16_t opcode = ntohs(OPCODE_ACK);
     memcpy(buf, &opcode, 2);
 
     uint16_t block = htons(1);
     memcpy(buf, &block, 2);
 
-    fwrite(buf, 1, sizeof(buf), stdout);
+    /* fwrite(buf, 1, sizeof(buf), stdout); */
 
     const char *msg = "hello world\0";
     memcpy(buf, "Hello world\0", strlen(msg));
