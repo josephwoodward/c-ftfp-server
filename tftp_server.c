@@ -124,21 +124,17 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 
 void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *client_addr) {
     uint8_t data[512];
-    ssize_t dlen, c;
 
     uint16_t block_number = 0;
 
-    int countdown;
-    int to_close = 0;
+    /* int countdown; */
+    /* int to_close = 0; */
     // Store the content of the file
-    char myString[100] = {0};
-    fgets(myString, 100, src_file);
+    /* char myString[100] = {0}; */
+    /* fgets(myString, 100, src_file); */
 
-    dlen = fread(data, 1, sizeof(data), src_file);
-
-    // clear buffer before writing to it
+    // prepar buffer before writing it to the wire
     memset(buf, 0, sizeof buf);
-    /* memset(buf, 0, BUFSIZE); //can this work instead? */
 
     // prepare response message
     // Data acts as the data packet that will transfer the files payload
@@ -152,13 +148,26 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     uint16_t block = htons(1);
     memcpy(buf, &block, 2);
 
-    /* fwrite(buf, 1, sizeof(buf), stdout); */
-
     const char *msg = "hello world\0";
     memcpy(buf, "Hello world\0", strlen(msg));
 
-    /* printf("lengfth of buffer: %s\n", strlen(buf + 2)); */
+    // TODO: Loop and send contents of file
 
-    int result = sendto(socket_desc, msg, strlen(msg), 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
-    printf("result is: %d\n", result);
+    uint16_t block_num = 0;
+    uint16_t stop_sending = 1;
+
+    ssize_t slen, c;
+
+    while (!stop_sending) {
+	slen = fread(data, 1, sizeof(data), src_file);
+	block_num++;
+
+	// size is within max payload size
+	if (slen < 512) {
+	    stop_sending = 1;
+	}
+
+	int result = sendto(socket_desc, data, strlen(data), 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
+	printf("result is: %d\n", result);
+    }
 }
