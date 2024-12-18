@@ -158,16 +158,18 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
 
     ssize_t slen, c;
 
-    while (!stop_sending) {
+    printf("tansferring file...\n");
+
+    while (stop_sending == 1) {
 	slen = fread(data, 1, sizeof(data), src_file);
 	block_num++;
 
 	// size is within max payload size
 	if (slen < 512) {
-	    stop_sending = 1;
+	    stop_sending = 0;
 	}
 
-	int result = sendto(socket_desc, data, strlen(data), 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
+	int result = sendto(socket_desc, data, slen, 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
 	printf("result is: %d\n", result);
     }
 }
