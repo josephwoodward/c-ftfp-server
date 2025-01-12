@@ -35,7 +35,7 @@ int start_server(struct tftp_server *s) {
 	return EXIT_FAILURE;
     }
 
-    int socket_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    int socket_desc = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_desc < 0) {
 	printf("Error while creating socket\n");
 	return -1;
@@ -51,6 +51,8 @@ int start_server(struct tftp_server *s) {
     }
 
     // Set port and IP:
+
+    /* server_sock.sin_family = AF_INET; */
     struct sockaddr_in serv_addr = {
 	.sin_family = AF_INET,		 // we are using Ipv4 protocol
 	.sin_port = htons(s->port),	 // port 2053
@@ -102,7 +104,7 @@ int start_server(struct tftp_server *s) {
 /* ------------------------------------------------ */
 int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_addr) {
     socklen_t clientAddrLen = sizeof(&client_addr);
-    int bytes_read = recvfrom(socket_desc, m, sizeof(*m), 0, (struct sockaddr *)&client_addr, &clientAddrLen);
+    int bytes_read = recvfrom(socket_desc, m, sizeof(*m), 0, (struct sockaddr *)client_addr, &clientAddrLen);
     if (bytes_read < 0) {
 	printf("Error whilst listening for tftp message: %d", errno);
 	return -1;
@@ -123,7 +125,6 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 }
 
 void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *client_addr) {
-    uint8_t data[512];
 
     uint16_t block_number = 0;
 
@@ -133,7 +134,7 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     /* char myString[100] = {0}; */
     /* fgets(myString, 100, src_file); */
 
-    // prepar buffer before writing it to the wire
+    // prepare buffer before writing it to the wire
     memset(buf, 0, sizeof buf);
 
     // prepare response message
@@ -142,21 +143,16 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     // ----------------------------------
     // | Opcode |   Block #  |   Data     |
     // ----------------------------------
-    uint16_t opcode = ntohs(OPCODE_ACK);
-    memcpy(buf, &opcode, 2);
+    /* uint16_t opcode = ntohs(OPCODE_DATA); */
+    /* memcpy(buf, &opcode, 2); */
 
     uint16_t block = htons(1);
     memcpy(buf, &block, 2);
 
-    const char *msg = "hello world\0";
-    memcpy(buf, "Hello world\0", strlen(msg));
-
-    // TODO: Loop and send contents of file
-
     uint16_t block_num = 0;
     uint16_t stop_sending = 1;
-
     ssize_t slen, c;
+    uint8_t data[512];
 
     printf("tansferring file...\n");
 
@@ -164,12 +160,27 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
 	slen = fread(data, 1, sizeof(data), src_file);
 	block_num++;
 
+	// copy data to buffer before sending it
+	memcpy(buf, &data, sizeof(slen));
+
+	tftp_message m;
+	m.opcode = htons(OPCODE_DATA);
+	m.data.block_number = 1;
+	memcpy(m.data.data, data, slen);
+
 	// size is within max payload size
 	if (slen < 512) {
 	    stop_sending = 0;
 	}
 
-	int result = sendto(socket_desc, data, slen, 0, (struct sockaddr *)&client_addr, sizeof(*client_addr));
-	printf("result is: %d\n", result);
+	int bytes_sent = sendto(socket_desc, &m, slen + 4, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
+	if (bytes_sent < 0) {
+	    printf("failed to send to client: %s\n", strerror(errno));
+	    return;
+	}
+
+	printf("total bytes sent: %d\n", bytes_sent);
+
+	printf("sent successfully\n");
     }
 }
