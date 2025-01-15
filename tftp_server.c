@@ -110,10 +110,21 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 	return -1;
     }
 
+    char *something = m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode);
     m->opcode = ntohs(m->opcode);
     if (m->opcode == OPCODE_RRQ) {
-	strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode));
+	strcpy(m->request.mode, something);
     }
+
+    /* switch (m->opcode) { */
+    /* case OPCODE_RRQ: */
+    /* strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode)); */
+    /* break; */
+
+    /* case OPCODE_ACK: */
+    /* // statements */
+    /* break; */
+    /* } */
 
     if (DEBUG) {
 	printf("root opcode received: %d\n", m->opcode);
@@ -155,15 +166,16 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
 	tftp_message m;
 	m.opcode = htons(OPCODE_DATA);
 	m.data.block_number = block_num;
-	memcpy(m.data.data, file_content, contents_len);
+	/* memcpy(m.data.data, file_content, contents_len); */
+
+	printf("size of union is %lu\n", sizeof(m));
 
 	// can we send entire file in single data frame?
 	if (contents_len < 512) {
 	    stop_sending = 1;
 	}
 
-	int bytes_sent =
-	    sendto(socket_desc, &m, contents_len + 4, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
+	int bytes_sent = sendto(socket_desc, &m, contents_len, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
 	if (bytes_sent < 0) {
 	    printf("failed to send to client: %s\n", strerror(errno));
 	    return;
