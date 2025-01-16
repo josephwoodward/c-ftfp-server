@@ -110,10 +110,12 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 	return -1;
     }
 
-    char *something = m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode);
+    // parse mode (positioned after filename, which could be variable length)
+    // use pointer arithmatic to move pointer beyond filename\n so we can read mode
     m->opcode = ntohs(m->opcode);
     if (m->opcode == OPCODE_RRQ) {
-	strcpy(m->request.mode, something);
+	/* strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode); */
+	strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode));
     }
 
     /* switch (m->opcode) { */
