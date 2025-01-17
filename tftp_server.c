@@ -98,10 +98,6 @@ int start_server(struct tftp_server *s) {
     return EXIT_SUCCESS;
 }
 
-/* 2 bytes     string    1 byte     string   1 byte */
-/* ------------------------------------------------ */
-/* | Opcode |  Filename  |   0  |    Mode    |   0  | */
-/* ------------------------------------------------ */
 int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_addr) {
     socklen_t clientAddrLen = sizeof(&client_addr);
     int bytes_read = recvfrom(socket_desc, m, sizeof(*m), 0, (struct sockaddr *)client_addr, &clientAddrLen);
@@ -110,23 +106,27 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 	return -1;
     }
 
-    // parse mode (positioned after filename, which could be variable length)
-    // use pointer arithmatic to move pointer beyond filename\n so we can read mode
     m->opcode = ntohs(m->opcode);
-    if (m->opcode == OPCODE_RRQ) {
-	/* strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode); */
+
+    switch (m->opcode) {
+    case OPCODE_RRQ:
+	/* 2 bytes     string    1 byte     string   1 byte */
+	/* ------------------------------------------------ */
+	/* | Opcode |  Filename  |   0  |    Mode    |   0  | */
+	/* ------------------------------------------------ */
+
+	// parse mode (positioned after filename, which could be variable length) by using
+	// pointer arithmatic to move pointer beyond "filename\n" so we can read mode string.
 	strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode));
+	break;
+    case OPCODE_ACK:
+	/* 2 bytes     2 bytes */
+	/* --------------------- */
+	/* | Opcode |   Block #  | */
+	/* --------------------- */
+	// statements
+	break;
     }
-
-    /* switch (m->opcode) { */
-    /* case OPCODE_RRQ: */
-    /* strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode)); */
-    /* break; */
-
-    /* case OPCODE_ACK: */
-    /* // statements */
-    /* break; */
-    /* } */
 
     if (DEBUG) {
 	printf("root opcode received: %d\n", m->opcode);
