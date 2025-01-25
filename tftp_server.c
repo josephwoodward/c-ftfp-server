@@ -89,9 +89,11 @@ int start_server(struct tftp_server *s) {
 	    file = fopen(m.request.filename_and_mode, "r");
 	    if (file == NULL) {
 		printf("Unable to open the file.\n");
+		return -1;
 	    }
 
 	    transfer_binary_mode(file, socket_desc, &client_addr);
+	    return EXIT_SUCCESS;
 	}
     }
 
@@ -138,10 +140,6 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 }
 
 void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *client_addr) {
-
-    // prepare buffer before writing it to the wire
-    memset(buf, 0, sizeof buf);
-
     // prepare response message
     // Data acts as the data packet that will transfer the files payload
     // 2 bytes     2 bytes      n bytes
@@ -150,7 +148,6 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     // ----------------------------------
 
     uint16_t block = htons(1);
-    memcpy(buf, &block, 2);
 
     uint16_t block_num, stop_sending = 0;
     ssize_t contents_len;
@@ -158,35 +155,28 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
 
     printf("tansferring file...\n");
 
-    while (stop_sending == 0) {
-	contents_len = fread(file_content, 1, sizeof(file_content), src_file);
-	block_num++;
+    /* while (stop_sending == 0) { */
+    contents_len = fread(file_content, 1, sizeof(file_content), src_file);
+    block_num++;
 
-	// copy data to buffer before sending it
-	memcpy(buf, &file_content, sizeof(contents_len));
+    tftp_message m;
+    m.opcode = htons(OPCODE_DATA);
+    m.data.block_number = block_num;
+    memcpy(m.data.data, file_content, contents_len);
 
-	tftp_message m;
-	m.opcode = htons(OPCODE_DATA);
-	m.data.block_number = block_num;
-	/* memcpy(m.data.data, file_content, contents_len); */
-
-	printf("size of union is %lu\n", sizeof(m));
-
-	// can we send entire file in single data frame?
-	if (contents_len < 512) {
-	    stop_sending = 1;
-	}
-
-	int bytes_sent = sendto(socket_desc, &m, contents_len, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
-	if (bytes_sent < 0) {
-	    printf("failed to send to client: %s\n", strerror(errno));
-	    return;
-	}
-
-	printf("total bytes sent: %d\n", bytes_sent);
+    // can we send entire file in single data frame?
+    if (contents_len < 512) {
+	stop_sending = 1;
     }
 
-    printf("sent successfully\n");
+    ssize_t len = sizeof(m.opcode) + sizeof(m.data.block_number) + contents_len;
+    int bytes_sent = sendto(socket_desc, &m, len, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
+    if (bytes_sent < 0) {
+	printf("failed to send to client: %s\n", strerror(errno));
+	return;
+    }
+
+    printf("%d sent successfully\n", bytes_sent);
 
     return;
 }
