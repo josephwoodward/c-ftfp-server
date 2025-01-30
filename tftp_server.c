@@ -68,7 +68,7 @@ int start_server(struct tftp_server *s) {
     printf("Listening for incoming tftp messages on port %d...\n\n", s->port);
 
     struct sockaddr_in client_addr;
-    socklen_t clientAddrLen = sizeof(client_addr);
+    /* socklen_t clientAddrLen = sizeof(client_addr); */
 
     // ensure buffer is set
     memset(buf, 0, sizeof buf);
@@ -79,6 +79,7 @@ int start_server(struct tftp_server *s) {
 
     while (1) {
 	// read contents of dataframe
+	printf("waiting for packet...\n");
 	if (parse_message(socket_desc, &m, &client_addr) != 0) {
 	    printf("failed to parse tftp message\n", errno);
 	    return -1;
@@ -88,12 +89,11 @@ int start_server(struct tftp_server *s) {
 	    FILE *file;
 	    file = fopen(m.request.filename_and_mode, "r");
 	    if (file == NULL) {
-		printf("Unable to open the file.\n");
-		return -1;
+		printf("Unable to open the file: %s\n", strerror(errno));
+		continue;
 	    }
 
 	    transfer_binary_mode(file, socket_desc, &client_addr);
-	    return EXIT_SUCCESS;
 	}
     }
 
@@ -108,6 +108,8 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 	return -1;
     }
 
+    printf("reading message...\n");
+
     m->opcode = ntohs(m->opcode);
 
     switch (m->opcode) {
@@ -120,6 +122,12 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 	// parse mode (positioned after filename, which could be variable length) by using
 	// pointer arithmatic to move pointer beyond "filename\n" so we can read mode string.
 	strcpy(m->request.mode, m->request.filename_and_mode + 1 + strlen(m->request.filename_and_mode));
+
+	if (DEBUG) {
+	    printf("read: root opcode received: %d\n", m->opcode);
+	    printf("read: request filename: %s\n", m->request.filename_and_mode);
+	    printf("read: mode: %s\n", m->request.mode);
+	}
 	break;
     case OPCODE_ACK:
 	/* 2 bytes     2 bytes */
@@ -128,12 +136,6 @@ int parse_message(int socket_desc, tftp_message *m, struct sockaddr_in *client_a
 	/* --------------------- */
 	// statements
 	break;
-    }
-
-    if (DEBUG) {
-	printf("root opcode received: %d\n", m->opcode);
-	printf("request filename: %s\n", m->request.filename_and_mode);
-	printf("mode: %s\n", m->request.mode);
     }
 
     return 0;
@@ -147,36 +149,56 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
     // | Opcode |   Block #  |   Data     |
     // ----------------------------------
 
-    uint16_t block = htons(1);
+    /* uint16_t block_num = htons(1); */
+    uint16_t block_num = 0;
 
-    uint16_t block_num, stop_sending = 0;
+    uint16_t stop_sending = 0;
     ssize_t contents_len;
     uint8_t file_content[512];
 
-    printf("tansferring file...\n");
-
-    /* while (stop_sending == 0) { */
-    contents_len = fread(file_content, 1, sizeof(file_content), src_file);
-    block_num++;
-
     tftp_message m;
-    m.opcode = htons(OPCODE_DATA);
-    m.data.block_number = block_num;
-    memcpy(m.data.data, file_content, contents_len);
 
-    // can we send entire file in single data frame?
-    if (contents_len < 512) {
-	stop_sending = 1;
+    printf("\nsending file...\n");
+
+    while (stop_sending == 0) {
+	block_num++;
+
+	// parse response
+	if (block_num > 1) {
+	    if (parse_message(socket_desc, &m, client_addr) != 0) {
+		printf("failed to parse tftp message\n", errno);
+		return;
+	    }
+
+	    if (m.opcode == OPCODE_ACK) {
+		printf("ack received for block %d, exiting...\n\n", m.ack.block_number);
+		return;
+	    }
+	}
+
+	contents_len = fread(file_content, 1, sizeof(file_content), src_file);
+	// can we send entire file in single data frame?
+	if (contents_len < 512) {
+	    /* stop_sending = 1; */
+	}
+
+	tftp_message m;
+	m.opcode = htons(OPCODE_DATA);
+	m.data.block_number = block_num;
+
+	memcpy(m.data.data, file_content, contents_len);
+	printf("setting block number %d\n", m.data.block_number);
+	printf("size of %lu\n", sizeof(m.data.block_number));
+
+	ssize_t len = sizeof(m.opcode) + sizeof(m.data.block_number) + contents_len;
+	int bytes_sent = sendto(socket_desc, &m, len, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
+	if (bytes_sent < 0) {
+	    printf("failed to send to client: %s\n", strerror(errno));
+	    return;
+	}
+
+	printf("%d bytes sent successfully\n\n", bytes_sent);
     }
-
-    ssize_t len = sizeof(m.opcode) + sizeof(m.data.block_number) + contents_len;
-    int bytes_sent = sendto(socket_desc, &m, len, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
-    if (bytes_sent < 0) {
-	printf("failed to send to client: %s\n", strerror(errno));
-	return;
-    }
-
-    printf("%d sent successfully\n", bytes_sent);
 
     return;
 }
