@@ -188,7 +188,6 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
 
 	memcpy(m.data.data, file_content, contents_len);
 	printf("setting block number %d\n", m.data.block_number);
-	printf("size of %lu\n", sizeof(m.data.block_number));
 
 	ssize_t len = sizeof(m.opcode) + sizeof(m.data.block_number) + contents_len;
 	int bytes_sent = sendto(socket_desc, &m, len, 0, (struct sockaddr *)client_addr, sizeof(*client_addr));
