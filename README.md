@@ -7,6 +7,14 @@ You can find the full specification here: https://datatracker.ietf.org/doc/html/
 
 ### Usage
 
+**Lauch server:**
+
+```shell
+$ clang -pedantic main.c tftp_server.c && ./a.out
+```
+
+**Read file via tftp**
+
 ```shell
 $ tftp -e 127.0.0.1
 get payload.txt
