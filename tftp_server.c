@@ -184,7 +184,7 @@ void transfer_binary_mode(FILE *src_file, int socket_desc, struct sockaddr_in *c
 
 	tftp_message m;
 	m.opcode = htons(OPCODE_DATA);
-	m.data.block_number = block_num;
+	m.data.block_number = htons(block_num);
 
 	memcpy(m.data.data, file_content, contents_len);
 	printf("setting block number %d\n", m.data.block_number);
